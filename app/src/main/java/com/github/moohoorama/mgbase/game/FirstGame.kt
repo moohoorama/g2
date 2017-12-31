@@ -14,7 +14,7 @@ import com.github.moohoorama.mgbase.layout.UILayer
  * Created by kyw on 2017-12-31
  */
 class FirstGame(activity: MainActivity) : MyGame {
-    private var uiLayer= UILayer(activity,1024,96)
+    private var uiLayer= UILayer(activity,512,48)
     private var noTexLayer=NoTexLayer(activity,512)
     private var lbut= ButtonObj(50f, 50f,"Left", TColor.RED)
 
@@ -45,7 +45,6 @@ class FirstGame(activity: MainActivity) : MyGame {
     }
 
     override fun draw(clock: Long) {
-        Log.i("draw","${x} ${y}")
         uiLayer.drawRect(RectF(x,y,x+50,y+100),TColor.BLUE)
         noTexLayer.drawRect(RectF(x+50,y+50,x+150,y+100),TColor.GREEN)
     }

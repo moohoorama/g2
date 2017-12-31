@@ -5,7 +5,7 @@ import android.graphics.Paint
 /**
  * Created by Yanoo on 2016. 6. 27
  */
-data class TColor(var r:Float, var g:Float, var b:Float, var a:Float=0.0f) {
+data class TColor(var r:Float, var g:Float, var b:Float, var a:Float=1.0f) {
     fun setPaint(paint:Paint) {paint.setARGB(intA(), intR(), intG(), intB())}
     fun intA()= (a*0xff).toInt()
     fun intR()= (r*0xff).toInt()

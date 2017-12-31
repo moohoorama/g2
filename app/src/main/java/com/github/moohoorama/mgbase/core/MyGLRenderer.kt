@@ -73,7 +73,6 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
 
     private fun setBitmap(gl: GL10, layer: Array<Layer>) {
         if (glTexture.size != layer.size) {
-            Log.i("LoadBitmap", "Remake")
             if (glTexture.isNotEmpty()) {
                 gl.glDeleteTextures(glTexture.size, glTexture, 0)
             }
@@ -84,6 +83,8 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
                     glTexture,
                     0
             )
+            var str = ""
+            Log.i("LoadBitmap", "Remake")
         }
         for (idx in layer.indices) {
             layer[idx].loadBitmap(gl,glTexture[idx])
@@ -93,6 +94,9 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
     override fun onDrawFrame(gl: GL10) {
         val curClock = (System.currentTimeMillis() - startTS) * fps / 1000
         var nextGame:MyGame?=null
+
+        gl.glClearColor(1.0f, 0.5f, 1.0f, 1.0f)
+        gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
 
         var layers = game.getLayers()
         for (layer in layers) {
@@ -111,9 +115,6 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
                 touchEV = TouchEV(touchEV.width,touchEV.height,touchEV.x,touchEV.y, -1)
             }
         }
-
-        gl.glClearColor(1.0f, 0.5f, 1.0f, 1.0f)
-        gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
 
         game.draw(clock)
         for (layer in layers) {

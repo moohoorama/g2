@@ -3,6 +3,7 @@ package com.github.moohoorama.mgbase.layout
 import android.graphics.Bitmap
 import android.graphics.RectF
 import android.opengl.GLUtils
+import android.util.Log
 import com.github.moohoorama.mgbase.core.MainActivity
 import com.github.moohoorama.mgbase.core.TColor
 import com.github.moohoorama.mgbase.core.TouchEV
@@ -43,13 +44,16 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
         if (dirty){
             val bitmap= getBitmap()
             if (bitmap != null) {
+                Log.i("LoadBitmap", "$textureID, Bitmap")
                 this.textureID = textureID
                 gl.glBindTexture(GL10.GL_TEXTURE_2D, textureID)
                 gl.glTexParameterx(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_LINEAR)
                 gl.glTexParameterx(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR)
                 GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, bitmap, 0)
-                dirty = false
+            } else {
+                Log.i("LoadBitmap", "$textureID, NoBitmap")
             }
+            dirty = false
         }
     }
     open fun reload() {
