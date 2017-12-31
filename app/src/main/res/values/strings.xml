@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">MGBase</string>
+
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+
+    <string name="interstitial_ad_app_id">ca-app-pub-3940256099942544~3347511713</string>
+    <string name="interstitial_ad_unit_id">ca-app-pub-3940256099942544/6300978111</string>
+
+    <string name="ad_app_id">ca-app-pub-3889289063570497~7197020907</string>
+    <string name="ad_unit_id">ca-app-pub-3889289063570497/5103665444</string>
+</resources>
