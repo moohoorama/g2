@@ -23,8 +23,9 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
     private var y=0
     private var maxHeight=0 // 현재 줄의 최대 길이. 이만큼 개행해야함
 
+    data class TextLoc(val rect: RectF, val bounds:RectF)
     /* 이미 할당된 공간에 대한 기록 */
-    private val msgMap = HashMap<String, RectF>()
+    private val msgMap = HashMap<String, TextLoc>()
     private var rectTx:RectF=RectF()
     private var roundRectTx:RectF=RectF()
     private var circleTx:RectF=RectF()
@@ -49,7 +50,10 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         x = 0
         y = 0
         maxHeight = 0
+
         val paint= Paint()
+        paint.isAntiAlias = false
+
         TColor.WHITE.setPaint(paint)
 
         val rect = getDrawableArea(shapeSize,shapeSize)
@@ -111,50 +115,45 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         }
     }
 
-    fun drawText(x:Float, y:Float, size:Float, msg:String, tc: TColor) {
-        val _tx=getText(msg)
-        if (_tx == null) {
-            return
-        }
-        val tx = rectNormalize(_tx)
+    fun drawText(x:Float, y:Float, size:Float, msg:String, align:Paint.Align, tc: TColor) {
+        val textLoc=getText(msg)
+        if (textLoc != null) {
+            val tx = rectNormalize(textLoc.rect)
 
-        if (tx.width() > 0 && tx.height() > 0) {
-            val width = size/2*tx.width()/tx.height()
-            val height = size/2
-            val loc = RectF(x-width,y-height,x+width,y+height)
-
-            addRect(loc, tx, tc)
+            if (tx.width() > 0 && tx.height() > 0) {
+                val width = size*tx.width()/tx.height()
+                val height = size
+                val baseTop=0;
+                //height*(textLoc.bounds.top/textLoc.rect.height())
+                when(align) {
+                    Paint.Align.LEFT -> addRect(RectF(x,y-height/2+baseTop,x+width,y+height/2+baseTop), tx, tc)
+                    Paint.Align.CENTER -> addRect(RectF(x-width/2,y-height/2+baseTop,x+width/2,y+height/2+baseTop), tx, tc)
+                    Paint.Align.RIGHT-> addRect(RectF(x-width,y-height/2+baseTop,x,y+height/2+baseTop), tx, tc)
+                }
+            }
         }
     }
     fun drawText(loc: RectF, msg:String, tc: TColor) {
-        val _tx=getText(msg)
-        if (_tx == null) {
-            return
-        }
-        val tx = rectNormalize(_tx)
+        val textLoc=getText(msg)
+        if (textLoc != null) {
+            val tx = rectNormalize(textLoc.rect)
 
-        if (tx != null && tx.width() > 0 && tx.height() > 0) {
-            if (loc.right < 0 && loc.bottom < 0) {
-                loc.bottom = loc.top + fontSize
+            if (tx.width() > 0 && tx.height() > 0) {
+                if (loc.right < 0 && loc.bottom < 0) {
+                    loc.bottom = loc.top + fontSize
+                }
+                if (loc.right < 0) {
+                    loc.right = loc.left + loc.height() * tx.width() / tx.height()
+                }
+                if (loc.bottom < 0) {
+                    loc.bottom = loc.top + loc.width() * tx.height() / tx.width()
+                }
+                addRect(loc, tx, tc)
             }
-            if (loc.right < 0) {
-                loc.right = loc.left+loc.height()*tx.width()/tx.height()
-            }
-            if (loc.bottom < 0) {
-                loc.bottom = loc.top+loc.width()*tx.height()/tx.width()
-            }
-            addRect(loc, tx, tc)
         }
     }
-    fun getText(msg: String): RectF? {
-        if (msgMap.containsKey(msg)) {
-            return msgMap[msg]
-        }
-        val ret = renderText(msg)
-        if (ret!=null) {
-            msgMap.put(msg, ret)
-        }
-        return ret
+    fun getText(msg: String): TextLoc? {
+        return msgMap[msg] ?: renderText(msg)
     }
 
     private fun getDrawableArea(width: Int, height:Int): RectF? {
@@ -183,10 +182,13 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         return RectF((rect.left-0.5f)/bitmapSize,(rect.top-0.5f)/bitmapSize,(rect.right+0.5f)/bitmapSize,(rect.bottom+0.5f)/bitmapSize)
     }
 
-    private fun renderText(msg: String): RectF? {
+    private fun renderText(msg: String): TextLoc? {
+        if (msg.isEmpty()){
+            return null
+        }
         val textPaint = Paint()
         textPaint.textSize = fontSize.toFloat()
-        textPaint.setAntiAlias(true)
+        textPaint.isAntiAlias = false
         TColor.WHITE.setPaint(textPaint)
         textPaint.textAlign = Paint.Align.LEFT
         textPaint.typeface = typeface
@@ -196,14 +198,18 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
 
         val bound = Rect()
         textPaint.getTextBounds(msg, 0, msg.length, bound)
-        val drawArea = getDrawableArea(bound.width(),bound.height())
+        val drawArea = getDrawableArea(Math.abs(bound.left)+Math.abs(bound.right),
+                                       Math.abs(bound.top)+Math.abs(bound.bottom))
         if (drawArea==null) {
             return null
         }
         /* left,top쪽 방향으로 조금 오버해서 그릴 수도 있음 */
-        canvas.drawText(msg, (drawArea.left + -bound.left).toFloat(), drawArea.bottom, textPaint)
+        canvas.drawText(msg, drawArea.left+Math.abs(bound.left).toFloat(), drawArea.top+Math.abs(bound.top).toFloat(), textPaint)
         setDirty()
-        return drawArea
+
+        val loc = TextLoc(drawArea, RectF(bound))
+        msgMap.put(msg, loc)
+        return loc
     }
 
     override fun render(gl: GL10) {

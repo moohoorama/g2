@@ -114,8 +114,10 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
         val curClock = (System.currentTimeMillis() - startTS) * fps / 1000
         var nextGame:MyGame?=null
 
-        gl.glClearColor(0.5f, 0.5f, 0.5f, 1.0f)
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
+//        gl.glClearColor(0.5f, 0.5f, 0.5f, 1.0f)
+        gl.glClearColor(0f, 0f, 0f, 1.0f)
+        gl.glLoadIdentity()
 
         val layers = game.getLayers()
         for (layer in layers) {

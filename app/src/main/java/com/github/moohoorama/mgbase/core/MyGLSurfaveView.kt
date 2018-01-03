@@ -10,10 +10,9 @@ import com.github.moohoorama.mgbase.game.FirstGame
  * Created by kyw on 2017-12-30
  */
 class MyGLSurfaveView(activity: MainActivity) : GLSurfaceView(activity) {
-    lateinit var renderer: MyGLRenderer
+    var renderer: MyGLRenderer = MyGLRenderer(context, FirstGame(activity))
 
     init {
-        renderer= MyGLRenderer(context, FirstGame(activity))
         setOnTouchListener(renderer)
         setRenderer(renderer)
         renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
