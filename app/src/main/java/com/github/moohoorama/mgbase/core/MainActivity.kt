@@ -3,6 +3,7 @@ package com.github.moohoorama.mgbase.core
 import android.app.Activity
 import android.os.Bundle
 import android.os.Handler
+import android.util.Log
 import android.view.View
 import android.widget.LinearLayout
 import com.github.moohoorama.mgbase.R
@@ -46,6 +47,8 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
 
+        Log.i("onResume", "$mToBeResumed $mLostFocus")
+
         mToBeResumed = mLostFocus
         if (!mLostFocus) {
             glView.onResume()
@@ -56,10 +59,13 @@ class MainActivity : Activity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
 
+        Log.i("onWindowFocusChanged", "$mToBeResumed $mLostFocus $hasFocus")
+
         mLostFocus = !hasFocus
         if (mToBeResumed && hasFocus) {
             mToBeResumed = false
             glView.onResume()
+            glView.renderer.reload()
         }
     }
 }

@@ -11,16 +11,19 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 /**
- * Created by kyw on 2017-12-30.
+ * Created by kyw on 2017-12-30
  */
 class MyGLRenderer(private val context: Context, private var game:MyGame): GLSurfaceView.Renderer,View.OnTouchListener {
     private var width = 1
     private var height = 1
+    private var realWidth = 1
+    private var realHeight = 1
     private var clock: Long = 0
     private val startTS = System.currentTimeMillis()
+    private val baseSize = 1024
 
     private val fps = 60
-    private var touchEV=TouchEV(1f,1f,0f,0f,-1)
+    private var touchEV=TouchEV()
     private var glTexture:IntArray = intArrayOf()
 
     fun getWidth()=width
@@ -44,24 +47,41 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
     }
 
     override fun onSurfaceChanged(gl: GL10, w: Int, h: Int) {
-        width = w
-        height = h
+        realWidth = w
+        realHeight = h
         if (width==0){
-            width = 1
+            realWidth = 1
         }
-        if (height == 0) {
-            height = 1
+        if (realHeight == 0) {
+            realHeight = 1
         }
+        if (w > h) {
+            height = baseSize
+            width = height*realWidth/realHeight
+        } else {
+            width = baseSize
+            height = width*realHeight/realWidth
+        }
+        Log.i("onSurfaceChanged", "$width $height    $realWidth $realHeight")
         gl.glViewport(0, 0, w, h)         // ViewPort 리셋
         gl.glMatrixMode(GL10.GL_PROJECTION)        // MatrixMode를 Project Mode로
         gl.glLoadIdentity()                        // Matrix 리셋
-        gl.glOrthof(0f, w.toFloat(), h.toFloat(), 0f, 1f, -1f)
+        gl.glOrthof(0f, width.toFloat(), height.toFloat(), 0f, 1f, -1f)
         gl.glMatrixMode(GL10.GL_MODELVIEW)         // Matrix를 ModelView Mode로 변환
         gl.glLoadIdentity()                        // Matrix 리셋
     }
 
+
     override fun onTouch(view: View?, me: MotionEvent?): Boolean {
-        touchEV = TouchEV(width.toFloat(),height.toFloat(),me!!.x, me.y,me.action)
+        if (me != null) {
+//            Log.i("onTouch", "$view $me  $me.x $me.y ${me.action} ${me.actionIndex} ${me.pointerCount}")
+//            Log.i("onTouch", "${me.x} ${me.y} ${me.action} ${me.actionIndex} ${me.pointerCount}")
+//            val action = me.getAction() & MotionEvent.ACTION_MASK;
+//            when(action) {
+
+//            }
+            touchEV = TouchEV(me,width,height, realWidth, realHeight)
+        }
         return true
     }
 
@@ -83,7 +103,6 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
                     glTexture,
                     0
             )
-            var str = ""
             Log.i("LoadBitmap", "Remake")
         }
         for (idx in layer.indices) {
@@ -95,25 +114,31 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
         val curClock = (System.currentTimeMillis() - startTS) * fps / 1000
         var nextGame:MyGame?=null
 
-        gl.glClearColor(1.0f, 0.5f, 1.0f, 1.0f)
+        gl.glClearColor(0.5f, 0.5f, 0.5f, 1.0f)
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
 
-        var layers = game.getLayers()
+        val layers = game.getLayers()
         for (layer in layers) {
             layer.clear()
         }
+        /* It's first loop */
+        if (clock == 0L) {
+            game.begin(clock)
+        }
+
         while (clock < curClock) {
             for (layer in layers) {
                 layer.act(clock, touchEV)
             }
-            if (null == nextGame) {
-                nextGame = game.act(clock, touchEV)
+            nextGame = game.act(clock, touchEV)
+            if (null != nextGame) {
+                game.end(clock)
+                game.begin(clock)
+                clock = curClock
+                break
             }
 
             clock++
-            if (touchEV.action == MotionEvent.ACTION_UP) {
-                touchEV = TouchEV(touchEV.width,touchEV.height,touchEV.x,touchEV.y, -1)
-            }
         }
 
         game.draw(clock)

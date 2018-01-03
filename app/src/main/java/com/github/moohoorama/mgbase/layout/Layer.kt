@@ -119,6 +119,7 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
         colorBuffer.position(0)
         indicesBuffer.position(0)
 
+        assert(this.textureID != -1)
         if (this.textureID == -1) {
             gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY)
             gl.glDisable(GL10.GL_TEXTURE_2D)

@@ -1,5 +1,7 @@
 package com.github.moohoorama.mgbase.layout.UI
 
+import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.util.Log
 import com.github.moohoorama.mgbase.core.TColor
@@ -25,13 +27,13 @@ class ButtonObj(private val x:Float, private val y:Float, private val msg:String
     override fun act(clock: Long, touchEV: TouchEV) {
         var goal= size
         action = -1
-        if (touchEV.distance(x.toFloat(),y.toFloat()) < size*3/2 && touchEV.action != -1) {
+        if (touchEV.minDistance(x.toFloat(),y.toFloat()) < size*3/2) {
             goal = size + 10
 
             if (pressClock > 0) {
                 pressClock--
             } else {
-                action = touchEV.action
+                action = 1
             }
         } else {
             pressClock = 0
@@ -49,10 +51,12 @@ class ButtonObj(private val x:Float, private val y:Float, private val msg:String
     }
 
     override fun draw(layer: UILayer, clock: Long) {
-//        val msgSize=layer.getText(msg)
-        val loc=RectF(x-press,y-press,x+press,y+press)
+        if (color.a > 0) {
+            val msgSize = layer.getText(msg)
+            val loc = RectF(x - press, y - press, x + press, y + press)
 
-        layer.drawRect(loc,color)
-        layer.drawText(x,y,press,msg,TColor.WHITE)
+            layer.addRect(loc, layer.getRoundedRectTx(), color)
+            layer.drawText(x, y, press / 2, msg, TColor.WHITE)
+        }
     }
 }

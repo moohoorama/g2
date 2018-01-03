@@ -1,10 +1,10 @@
 package com.github.moohoorama.mgbase.layout
 
 import android.graphics.*
+import android.util.Log
 import com.github.moohoorama.mgbase.core.MainActivity
 import com.github.moohoorama.mgbase.core.TColor
 import com.github.moohoorama.mgbase.core.TouchEV
-import com.github.moohoorama.mgbase.layout.Layer
 import com.github.moohoorama.mgbase.layout.UI.UIObj
 import java.util.HashMap
 import javax.microedition.khronos.opengles.GL10
@@ -12,27 +12,35 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Created by Yanoo on 2017. 12. 29
  */
-class UILayer(activity: MainActivity, private val blinkSize:Int, private val fontSize:Int): Layer(activity,16384  ) {
+class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fontSize:Int, private val shapeSize:Int,private  val bufferMax:Int): Layer(activity,bufferMax) {
     private val typeface = Typeface.DEFAULT
-    private val baseSize = fontSize*2
 
-    private var bitmap:Bitmap=Bitmap.createBitmap(blinkSize, blinkSize, Bitmap.Config.ARGB_4444)
-    private var canvas: Canvas = Canvas(bitmap)
+    private var bitmap:Bitmap=Bitmap.createBitmap(bitmapSize, bitmapSize, Bitmap.Config.ARGB_4444)
+    var canvas: Canvas = Canvas(bitmap)
+
+    /* bitmap에 그릴 공간을 할당하기 위하 사용하는 변수 */
+    private var x=0
+    private var y=0
+    private var maxHeight=0 // 현재 줄의 최대 길이. 이만큼 개행해야함
+
+    /* 이미 할당된 공간에 대한 기록 */
     private val msgMap = HashMap<String, RectF>()
-    private val whiteTx=RectF(
-            (blinkSize-2).toFloat()/blinkSize.toFloat(),
-            (blinkSize-2).toFloat()/blinkSize.toFloat(),
-            (blinkSize-1).toFloat()/blinkSize.toFloat(),
-            (blinkSize-1).toFloat()/blinkSize.toFloat())
+    private var rectTx:RectF=RectF()
+    private var roundRectTx:RectF=RectF()
+    private var circleTx:RectF=RectF()
+
+    fun getRectTx() = rectTx
+    fun getRoundedRectTx() = roundRectTx
+    fun getCircleTx() = circleTx
 
     private var UIs = ArrayList<UIObj>()
 
     override fun getWidth(): Int {
-        return blinkSize
+        return bitmapSize
     }
 
     override fun getHeight(): Int {
-        return blinkSize
+        return bitmapSize
     }
 
     private fun init() {
@@ -40,14 +48,29 @@ class UILayer(activity: MainActivity, private val blinkSize:Int, private val fon
         msgMap.clear()
         x = 0
         y = 0
+        maxHeight = 0
         val paint= Paint()
         TColor.WHITE.setPaint(paint)
-        canvas.drawRect(Rect(blinkSize-3,blinkSize-3,blinkSize,blinkSize), paint)
+
+        val rect = getDrawableArea(shapeSize,shapeSize)
+        canvas.drawRect(rect, paint)
+        rectTx = rectNormalize(rect!!)
+
+        val rrect = getDrawableArea(shapeSize,shapeSize)
+        canvas.drawRoundRect(rrect, shapeSize/4.toFloat(), shapeSize/4.toFloat(),paint)
+        roundRectTx = rectNormalize(rrect!!)
+
+        val circle = getDrawableArea(shapeSize,shapeSize)
+        if (circle != null) {
+            canvas.drawCircle(circle.centerX(),circle.centerY(),shapeSize/2.toFloat(),paint)
+            circleTx = rectNormalize(circle)
+        }
+
         setDirty()
     }
 
     override fun clear() {
-        if (y + baseSize >= blinkSize / 2) {
+        if (y + maxHeight >= bitmapSize / 2) {
             reload()
             init()
         }
@@ -57,13 +80,14 @@ class UILayer(activity: MainActivity, private val blinkSize:Int, private val fon
     }
 
     override fun drawRect(loc: RectF, tc: TColor): Boolean {
-        addRect(loc, whiteTx, tc)
+        addRect(loc, rectTx, tc)
         return true
     }
 
     override fun reload() {
         super.reload()
         init()
+        Log.i("Reload","RELOAD!!!!!!!!!")
     }
 
     fun addUI(ui: UIObj) :UILayer {
@@ -88,9 +112,13 @@ class UILayer(activity: MainActivity, private val blinkSize:Int, private val fon
     }
 
     fun drawText(x:Float, y:Float, size:Float, msg:String, tc: TColor) {
-        val tx=getText(msg)
+        val _tx=getText(msg)
+        if (_tx == null) {
+            return
+        }
+        val tx = rectNormalize(_tx)
 
-        if (tx != null && tx.width() > 0 && tx.height() > 0) {
+        if (tx.width() > 0 && tx.height() > 0) {
             val width = size/2*tx.width()/tx.height()
             val height = size/2
             val loc = RectF(x-width,y-height,x+width,y+height)
@@ -99,7 +127,11 @@ class UILayer(activity: MainActivity, private val blinkSize:Int, private val fon
         }
     }
     fun drawText(loc: RectF, msg:String, tc: TColor) {
-        val tx=getText(msg)
+        val _tx=getText(msg)
+        if (_tx == null) {
+            return
+        }
+        val tx = rectNormalize(_tx)
 
         if (tx != null && tx.width() > 0 && tx.height() > 0) {
             if (loc.right < 0 && loc.bottom < 0) {
@@ -125,8 +157,31 @@ class UILayer(activity: MainActivity, private val blinkSize:Int, private val fon
         return ret
     }
 
-    private var x=0
-    private var y=0
+    private fun getDrawableArea(width: Int, height:Int): RectF? {
+        if (x > bitmapSize) {
+            return null
+        }
+        if (x + width >= bitmapSize) { /* carriage return*/
+            y += maxHeight+2
+            x = 0
+            maxHeight = 0
+            if (y >= bitmapSize) {
+                return null
+            }
+        }
+        if (y+height >= bitmapSize) {
+            return null
+        }
+        if (height > maxHeight) {
+            maxHeight = height
+        }
+        var ret = RectF((x+1).toFloat(),(y+1).toFloat(),(x+1+width).toFloat(),(y+1+height).toFloat())
+        x += width+2
+        return ret
+    }
+    fun rectNormalize(rect:RectF):RectF {
+        return RectF((rect.left-0.5f)/bitmapSize,(rect.top-0.5f)/bitmapSize,(rect.right+0.5f)/bitmapSize,(rect.bottom+0.5f)/bitmapSize)
+    }
 
     private fun renderText(msg: String): RectF? {
         val textPaint = Paint()
@@ -141,24 +196,14 @@ class UILayer(activity: MainActivity, private val blinkSize:Int, private val fon
 
         val bound = Rect()
         textPaint.getTextBounds(msg, 0, msg.length, bound)
-        if (x + bound.right - bound.left >= blinkSize) { /* carriage return*/
-            x = 0
-            y += baseSize
-            if (y >= blinkSize) {
-                return null
-            }
+        val drawArea = getDrawableArea(bound.width(),bound.height())
+        if (drawArea==null) {
+            return null
         }
         /* left,top쪽 방향으로 조금 오버해서 그릴 수도 있음 */
-        canvas.drawText(msg, (x + -bound.left).toFloat(), (y + (-bound.top + bound.bottom)).toFloat(), textPaint)
+        canvas.drawText(msg, (drawArea.left + -bound.left).toFloat(), drawArea.bottom, textPaint)
         setDirty()
-        val ret = RectF(
-                x.toFloat() / blinkSize,
-                y.toFloat() / blinkSize,
-                (x + bound.right - bound.left).toFloat() / blinkSize,
-                (y + baseSize).toFloat() / blinkSize)
-
-        x += bound.width() + 2
-        return ret
+        return drawArea
     }
 
     override fun render(gl: GL10) {
