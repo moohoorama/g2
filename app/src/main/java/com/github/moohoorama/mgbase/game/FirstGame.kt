@@ -60,7 +60,9 @@ class FirstGame(private val activity: MainActivity) : MyGame {
 
     override fun draw(clock: Long) {
         uiLayer.drawRect(RectF(x,y,x+50,y+100),TColor.BLUE)
-        uiLayer.drawText(x, y, 50f, printText, Paint.Align.CENTER, TColor.INDIGO)
+        uiLayer.drawText(x, y, 50f, Paint.Align.CENTER, printText, TColor.INDIGO)
         uiLayer.addRect(RectF(100f,500f,600f,1000f),RectF(0f,0f,0.2f,0.2f),TColor.WHITE)
+//        uiLayer.addRect(RectF(100f,500f,600f,1000f),RectF(0f,0f,0.2f,0.2f),TColor.WHITE,(clock*Math.PI/600f).toFloat())
+        uiLayer.addRect(RectF(300f,300f,500f,350f),uiLayer.getRectTx(),TColor.WHITE,(clock*Math.PI/600f).toFloat())
     }
 }

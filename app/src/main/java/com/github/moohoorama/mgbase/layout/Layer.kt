@@ -14,6 +14,8 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Created by Yanoo on 2017. 12. 28
  */
+fun makeCenterRect(x:Float,y:Float,width:Float,height:Float)= RectF(x-width/2,y-height/2,x+width/2,y+height/2)
+
 abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
     val fullTx = RectF(0f,0f,1f,1f)
 
@@ -40,6 +42,10 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
         dirty = true
     }
 
+    companion object {
+        var depth = -0.000001f
+    }
+
     fun loadBitmap(gl: GL10, textureID:Int) {
         if (dirty){
             val bitmap= getBitmap()
@@ -60,26 +66,31 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
     open fun reload() {
         setDirty()
     }
-    fun addRect(vertex: RectF, texture: RectF, tc: TColor) {
-        val vf = dot4To4Point(3, vertex)
+
+    fun addRect(vertex: RectF, texture: RectF, tc: TColor, rotate:Float=0f):Boolean {
+        val vf = dot4To4Point(3, vertex, rotate)
         val tf = dot4To4Point(2, texture)
         val cf = rgbToPoint(tc, 4)
         val nf = shortArrayOf(0,1,2,2,1,3)
+
         for (i in 0 until nf.size) {
             nf[i] = (nf[i]+(capacity*4)).toShort()
         }
-        addPolygon(vf, tf, cf, nf)
+        return addPolygon(vf, tf, cf, nf)
     }
 
-    private fun addPolygon(vertex: FloatArray, texture: FloatArray, color: FloatArray, index:ShortArray) {
+    private fun addPolygon(vertex: FloatArray, texture: FloatArray, color: FloatArray, index:ShortArray): Boolean{
         if(capacity >= bufferMax) {
-            return
+            return false
         }
         vertexBuffer.put(vertex)
         textureBuffer.put(texture)
         colorBuffer.put(color)
         indicesBuffer.put(index)
         capacity++
+        depth -= 0.000001f
+
+        return true
     }
 
     private fun rgbToPoint(tc: TColor, count: Int): FloatArray {
@@ -97,20 +108,30 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
         return cf
     }
 
-    private fun dot4To4Point(p_level: Int, rect: RectF): FloatArray {
-        return if (p_level == 2) { /* 2d */
-            floatArrayOf(
-                    rect.left, rect.bottom,
-                    rect.left, rect.top,
-                    rect.right, rect.bottom,
-                    rect.right, rect.top)
+    private fun dot4To4Point(p_level: Int, rect: RectF,rotate:Float=0f): FloatArray {
+        var points= if (rotate == 0f) {
+            floatArrayOf(rect.left, rect.bottom,
+                         rect.left, rect.top,
+                         rect.right, rect.bottom,
+                         rect.right, rect.top)
         } else {
-            val depth=-(capacity+1).toFloat()/bufferMax.toFloat()
+            val c=Math.cos(rotate.toDouble()).toFloat()
+            val s=Math.sin(rotate.toDouble()).toFloat()
+            val cx=rect.centerX()
+            val cy=rect.centerY()
+            floatArrayOf(cx+(rect.left-cx)*c -(rect.bottom-cy)*s, cy+(rect.left-cx)*s +(rect.bottom-cy)*c,
+                         cx+(rect.left-cx)*c -(rect.top-cy)*s,     cy+(rect.left-cx)*s +(rect.top-cy)*c,
+                         cx+(rect.right-cx)*c-(rect.bottom-cy)*s, cy+(rect.right-cx)*s+(rect.bottom-cy)*c,
+                         cx+(rect.right-cx)*c-(rect.top-cy)*s,     cy+(rect.right-cx)*s+(rect.top-cy)*c)
+        }
+        return if (p_level == 2) { /* 2d */
+            points
+        } else {
             floatArrayOf(
-                    rect.left, rect.bottom, depth,
-                    rect.left, rect.top, depth,
-                    rect.right, rect.bottom, depth,
-                    rect.right, rect.top, depth)
+                    points[0],points[1],depth,
+                    points[2],points[3],depth,
+                    points[4],points[5],depth,
+                    points[6],points[7],depth)
         }
     }
 
@@ -138,6 +159,7 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
             gl.glEnable(GL10.GL_TEXTURE_2D)
         }
         capacity=0
+        depth = 0.00001f
 
         textureBuffer.position(0)
         vertexBuffer.position(0)
