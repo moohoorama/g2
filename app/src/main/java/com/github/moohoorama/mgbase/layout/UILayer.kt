@@ -5,17 +5,18 @@ import android.util.Log
 import com.github.moohoorama.mgbase.core.MainActivity
 import com.github.moohoorama.mgbase.core.TColor
 import com.github.moohoorama.mgbase.core.TouchEV
+import com.github.moohoorama.mgbase.layout.UI.CustomTexture
 import com.github.moohoorama.mgbase.layout.UI.UIObj
 import java.util.HashMap
-import javax.microedition.khronos.opengles.GL10
+
 
 /**
  * Created by Yanoo on 2017. 12. 29
  */
-class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fontSize:Int, private val shapeSize:Int,private  val bufferMax:Int): Layer(activity,bufferMax) {
+class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fontSize:Int, private val shapeSize:Int, bufferMax:Int): Layer(activity,bufferMax) {
     private val typeface = Typeface.DEFAULT
 
-    private var bitmap:Bitmap=Bitmap.createBitmap(bitmapSize, bitmapSize, Bitmap.Config.ARGB_4444)
+    private var bitmap:Bitmap= Bitmap.createBitmap(bitmapSize, bitmapSize, Bitmap.Config.ARGB_4444)
     var canvas: Canvas = Canvas(bitmap)
 
     /* bitmap에 그릴 공간을 할당하기 위하 사용하는 변수 */
@@ -26,15 +27,22 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
     data class TextLoc(val rect: RectF, val bounds:RectF)
     /* 이미 할당된 공간에 대한 기록 */
     private val msgMap = HashMap<String, TextLoc>()
-    private var rectTx:RectF=RectF()
-    private var roundRectTx:RectF=RectF()
-    private var circleTx:RectF=RectF()
 
-    fun getRectTx() = rectTx
-    fun getRoundedRectTx() = roundRectTx
-    fun getCircleTx() = circleTx
+    private var uis = ArrayList<UIObj>()
+    private val customTextures=ArrayList<CustomTexture>()
 
-    private var UIs = ArrayList<UIObj>()
+    private val rectTx=CustomTexture(shapeSize,shapeSize,fun(canvas:Canvas,area:RectF) {
+        val paint= Paint()
+        TColor.WHITE.setPaint(paint)
+        canvas.drawRect(area, paint)
+    }).attach(this)
+
+    private val roundTx=CustomTexture(shapeSize,shapeSize,fun(canvas:Canvas,rect:RectF) {
+        val paint= Paint()
+        TColor.WHITE.setPaint(paint)
+        val newRect=RectF(rect.left-rect.width(),rect.top-rect.height(),rect.right,rect.bottom)
+        canvas.drawArc(newRect, 0f, 90f, true, paint)
+    }).attach(this)
 
     override fun getWidth(): Int {
         return bitmapSize
@@ -51,11 +59,13 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         y = 0
         maxHeight = 0
 
-        val paint= Paint()
-        paint.isAntiAlias = false
-
-        TColor.WHITE.setPaint(paint)
-
+        for (customTexture in customTextures) {
+            val area = getDrawableArea(customTexture.width,customTexture.height) ?: continue
+            val normalArea=rectNormalize(area)
+            customTexture.reload(canvas,area,normalArea)
+            Log.i("Draw", "   $area,$normalArea")
+        }
+        /*
         val rect = getDrawableArea(shapeSize,shapeSize)
         if (rect != null) {
             canvas.drawRect(rect, paint)
@@ -63,19 +73,18 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         }
 
         val rrect = getDrawableArea(shapeSize,shapeSize)
-//        canvas.drawRoundRect(rrect, shapeSize/4.toFloat(), shapeSize/4.toFloat(),paint)
         if (rrect != null) {
             val newRect=RectF(rrect.left-rrect.width(),rrect.top-rrect.height(),rrect.right,rrect.bottom)
             canvas.drawArc(newRect, 0f, 90f, true, paint)
             roundRectTx = rectNormalize(rrect,-0.5f)
         }
 
-
         val circle = getDrawableArea(shapeSize,shapeSize)
         if (circle != null) {
             canvas.drawCircle(circle.centerX(),circle.centerY(),shapeSize/2.toFloat(),paint)
             circleTx = rectNormalize(circle)
         }
+        */
 
         setDirty()
     }
@@ -90,23 +99,61 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         return bitmap
     }
 
-    override fun drawRect(loc: RectF, tc: TColor): Boolean {
-        return addRect(loc, rectTx, tc)
+    override fun drawRect(left:Float, top:Float, right:Float, bottom:Float,  tc: TColor): Boolean {
+        return addRect(left,top,right,bottom, rectTx.get(), tc)
     }
 
-    fun drawRoundRect(loc: RectF, round:Float, tc: TColor):Boolean {
+    fun drawRoundRect(left:Float, top:Float, right:Float, bottom:Float, round:Float, tc: TColor):Boolean {
         var ret=true
-        ret = ret and  addRect(RectF(loc.left,loc.top+round,loc.right,loc.bottom-round), rectTx, tc)
-        ret = ret and  addRect(RectF(loc.left+round,loc.top,loc.right-round,loc.top+round), rectTx, tc)
-        ret = ret and  addRect(RectF(loc.left+round,loc.bottom-round,loc.right-round,loc.bottom), rectTx, tc)
+        ret = ret and  addRect(left,top+round,right,bottom-round, rectTx.get(), tc)
+        ret = ret and  addRect(left+round,top,right-round,top+round, rectTx.get(), tc)
+        ret = ret and  addRect(left+round,bottom-round,right-round,bottom, rectTx.get(), tc)
 
         val quat=(Math.PI/2).toFloat()
-        ret = ret and  addRect(RectF(loc.left,loc.top,loc.left+round,loc.top+round), roundRectTx, tc,quat*2)
-        ret = ret and  addRect(RectF(loc.left,loc.bottom-round,loc.left+round,loc.bottom), roundRectTx, tc,quat)
-        ret = ret and  addRect(RectF(loc.right-round,loc.top,loc.right,loc.top+round), roundRectTx, tc,quat*3)
-        ret = ret and  addRect(RectF(loc.right-round,loc.bottom-round,loc.right,loc.bottom), roundRectTx, tc)
+        ret = ret and  addRect(left,top,left+round,top+round, roundTx.get(), tc,quat*2)
+        ret = ret and  addRect(left,bottom-round,left+round,bottom, roundTx.get(), tc,quat)
+        ret = ret and  addRect(right-round,top,right,top+round, roundTx.get(), tc,quat*3)
+        ret = ret and  addRect(right-round,bottom-round,right,bottom, roundTx.get(), tc)
         return ret
     }
+    fun drawRoundBlock(left:Float, top:Float, right:Float, bottom:Float, round:Float, tc: TColor):Boolean {
+        val lighteness=tc.clone().addRGB(0.2f)
+        val darkness=tc.clone().addRGB(-0.2f)
+
+        var ret=true
+        ret = ret and  addRectColors(left,top+round,left+round,bottom-round, rectTx.get(), arrayOf(lighteness,lighteness,tc,tc))
+        ret = ret and  addRect(left+round,top+round,right-round,bottom-round, rectTx.get(), tc)
+        ret = ret and  addRectColors(right-round,top+round,right,bottom-round, rectTx.get(), arrayOf(tc,tc,darkness,darkness))
+        ret = ret and  addRectColors(left+round,top,right-round,top+round, rectTx.get(), arrayOf(tc,lighteness,tc,lighteness))
+        ret = ret and  addRectColors(left+round,bottom-round,right-round,bottom, rectTx.get(), arrayOf(darkness,tc,darkness,tc))
+
+        val quat=(Math.PI/2).toFloat()
+        ret = ret and  addRectColors(left,top,left+round,top+round, roundTx.get(), arrayOf(lighteness,tc,lighteness,lighteness),quat*2)
+        ret = ret and  addRectColors(left,bottom-round,left+round,bottom, roundTx.get(), arrayOf(lighteness,tc,tc,darkness),quat)
+        ret = ret and  addRectColors(right-round,top,right,top+round, roundTx.get(), arrayOf(darkness,tc,tc,lighteness),quat*3)
+        ret = ret and  addRectColors(right-round,bottom-round,right,bottom, roundTx.get(), arrayOf(darkness,tc,darkness,darkness))
+        return ret
+    }
+
+    fun drawBlock(left:Float, top:Float, right:Float, bottom:Float, round:Float, tc: TColor):Boolean {
+        val lighteness=tc.clone().addRGB(0.2f)
+        val darkness=tc.clone().addRGB(-0.3f)
+
+        var ret=true
+        ret = ret and  addRect(left+round,top+round,right-round,bottom-round, rectTx.get(), tc)
+        ret = ret and  addRectColors(left,top+round,left+round,bottom-round, rectTx.get(), arrayOf(lighteness,lighteness,tc,tc))
+        ret = ret and  addRectColors(right-round,top+round,right,bottom-round, rectTx.get(), arrayOf(tc,tc,darkness,darkness))
+        ret = ret and  addRectColors(left+round,top,right-round,top+round, rectTx.get(), arrayOf(tc,lighteness,tc,lighteness))
+        ret = ret and  addRectColors(left+round,bottom-round,right-round,bottom, rectTx.get(), arrayOf(darkness,tc,darkness,tc))
+
+        val quat=(Math.PI/2).toFloat()
+        ret = ret and  addRectColors(left,top,left+round,top+round, rectTx.get(), arrayOf(lighteness,tc,lighteness,lighteness),quat*2)
+        ret = ret and  addRectColors(left,bottom-round,left+round,bottom, rectTx.get(), arrayOf(lighteness,tc,tc,darkness),quat)
+        ret = ret and  addRectColors(right-round,top,right,top+round, rectTx.get(), arrayOf(darkness,tc,tc,lighteness),quat*3)
+        ret = ret and  addRectColors(right-round,bottom-round,right,bottom, rectTx.get(), arrayOf(darkness,tc,darkness,darkness))
+        return ret
+    }
+
 
     override fun reload() {
         super.reload()
@@ -114,15 +161,20 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         Log.i("Reload","RELOAD!!!!!!!!!")
     }
 
+    fun addCustomTexture(customTexture: CustomTexture):UILayer {
+        customTextures.add(customTexture)
+        return this
+    }
+
     fun addUI(ui: UIObj) :UILayer {
-        UIs.add(ui)
+        uis.add(ui)
         return this
     }
 
     override fun act(clock: Long, touchEV: TouchEV) {
         super.act(clock, touchEV)
 
-        for (ui in UIs) {
+        for (ui in uis) {
             ui.act(clock,touchEV)
         }
     }
@@ -130,7 +182,7 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
     override fun draw(clock: Long) {
         super.draw(clock)
 
-        for (ui in UIs) {
+        for (ui in uis) {
             ui.draw(this,clock)
         }
     }
@@ -146,9 +198,9 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
                 val baseTop=0;
                 //height*(textLoc.bounds.top/textLoc.rect.height())
                 when(align) {
-                    Paint.Align.LEFT -> addRect(RectF(x,y-height/2+baseTop,x+width,y+height/2+baseTop), tx, tc)
-                    Paint.Align.CENTER -> addRect(RectF(x-width/2,y-height/2+baseTop,x+width/2,y+height/2+baseTop), tx, tc)
-                    Paint.Align.RIGHT-> addRect(RectF(x-width,y-height/2+baseTop,x,y+height/2+baseTop), tx, tc)
+                    Paint.Align.LEFT -> addRect(x,y-height/2+baseTop,x+width,y+height/2+baseTop, tx, tc)
+                    Paint.Align.CENTER -> addRect(x-width/2,y-height/2+baseTop,x+width/2,y+height/2+baseTop, tx, tc)
+                    Paint.Align.RIGHT-> addRect(x-width,y-height/2+baseTop,x,y+height/2+baseTop, tx, tc)
                 }
             }
         }
@@ -168,7 +220,7 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
                 if (loc.bottom < 0) {
                     loc.bottom = loc.top + loc.width() * tx.height() / tx.width()
                 }
-                addRect(loc, tx, tc)
+                addRect(loc.left,loc.top,loc.right,loc.bottom, tx, tc)
             }
         }
     }
@@ -194,11 +246,11 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         if (height > maxHeight) {
             maxHeight = height
         }
-        var ret = RectF((x+1).toFloat(),(y+1).toFloat(),(x+1+width).toFloat(),(y+1+height).toFloat())
+        val ret = RectF((x+1).toFloat(),(y+1).toFloat(),(x+1+width).toFloat(),(y+1+height).toFloat())
         x += width+2
         return ret
     }
-    fun rectNormalize(rect:RectF,bound:Float=0.5f):RectF {
+    private fun rectNormalize(rect:RectF, bound:Float=-0.5f):RectF {
         return RectF((rect.left-bound)/bitmapSize,(rect.top-bound)/bitmapSize,(rect.right+bound)/bitmapSize,(rect.bottom+bound)/bitmapSize)
     }
 
@@ -219,10 +271,7 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         val bound = Rect()
         textPaint.getTextBounds(msg, 0, msg.length, bound)
         val drawArea = getDrawableArea(Math.abs(bound.left)+Math.abs(bound.right),
-                                       Math.abs(bound.top)+Math.abs(bound.bottom))
-        if (drawArea==null) {
-            return null
-        }
+                Math.abs(bound.top)+Math.abs(bound.bottom)) ?: return null
         /* left,top쪽 방향으로 조금 오버해서 그릴 수도 있음 */
         canvas.drawText(msg, drawArea.left+Math.abs(bound.left).toFloat(), drawArea.top+Math.abs(bound.top).toFloat(), textPaint)
         setDirty()
@@ -232,7 +281,4 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         return loc
     }
 
-    override fun render(gl: GL10) {
-        super.render(gl)
-    }
 }

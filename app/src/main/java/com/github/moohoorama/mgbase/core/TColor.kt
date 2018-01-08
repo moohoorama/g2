@@ -1,11 +1,31 @@
 package com.github.moohoorama.mgbase.core
 
+import android.graphics.Color
 import android.graphics.Paint
 
 /**
  * Created by Yanoo on 2016. 6. 27
  */
-data class TColor(var r:Float, var g:Float, var b:Float, var a:Float=1.0f) {
+class TColor(r:Float, g:Float, b:Float, a:Float=1.0f) {
+
+    var r=r
+        set(value) {
+            field=minOf(maxOf(value,0f),1f)
+        }
+    var g=g
+        set(value) {
+            field=minOf(maxOf(value,0f),1f)
+        }
+    var b=b
+        set(value) {
+            field=minOf(maxOf(value,0f),1f)
+        }
+    var a=a
+        set(value) {
+            field=minOf(maxOf(value,0f),1f)
+        }
+
+    fun int()= Color.argb(intA(),intR(),intG(),intB())
     fun setPaint(paint:Paint) {paint.setARGB(intA(), intR(), intG(), intB())}
     fun intA()= (a*0xff).toInt()
     fun intR()= (r*0xff).toInt()
@@ -23,6 +43,9 @@ data class TColor(var r:Float, var g:Float, var b:Float, var a:Float=1.0f) {
 
     fun multyplyRGB(v: Float): TColor {
         return TColor(this.r * v, this.g * v, this.b * v, this.a)
+    }
+    fun addRGB(v: Float): TColor {
+        return TColor(this.r + v, this.g + v, this.b + v, this.a)
     }
 
     companion object {

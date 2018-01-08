@@ -29,16 +29,16 @@ class PaintLayer(val blinkSize:Int, activity: MainActivity, bitmapId:Int): Layer
         bitmap.eraseColor(Color.TRANSPARENT)
 
         val renderer=getRenderer()
-        addRect(RectF(0.0f,0.0f,renderer.getWidth().toFloat(),renderer.getHeight().toFloat()), fullTx, TColor.WHITE)
+        addRect(0.0f,0.0f,renderer.getWidth().toFloat(),renderer.getHeight().toFloat(), fullTx, TColor.WHITE)
     }
     override fun getBitmap(): Bitmap? {
         return bitmap
     }
 
-    override fun drawRect(loc: RectF, tc: TColor): Boolean {
+    override fun drawRect(left:Float, top:Float, right:Float, bottom:Float, tc: TColor): Boolean {
         val paint= Paint()
         tc.setPaint(paint)
-        canvas.drawRect(loc, paint)
+        canvas.drawRect(RectF(left,top,right,bottom), paint)
 
         setDirty()
         return true

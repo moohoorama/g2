@@ -13,6 +13,8 @@ import javax.microedition.khronos.opengles.GL10
 /**
  * Created by kyw on 2017-12-30
  */
+val fps = 60
+
 class MyGLRenderer(private val context: Context, private var game:MyGame): GLSurfaceView.Renderer,View.OnTouchListener {
     private var width = 1
     private var height = 1
@@ -22,7 +24,6 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
     private val startTS = System.currentTimeMillis()
     private val baseSize = 1024
 
-    private val fps = 60
     private var touchEV=TouchEV()
     private var glTexture:IntArray = intArrayOf()
 
@@ -113,21 +114,23 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
     override fun onDrawFrame(gl: GL10) {
         val curClock = (System.currentTimeMillis() - startTS) * fps / 1000
         var nextGame:MyGame?=null
-
-        gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
-//        gl.glClearColor(0.5f, 0.5f, 0.5f, 1.0f)
-        gl.glClearColor(0f, 0f, 0f, 1.0f)
-        gl.glLoadIdentity()
+        var logStr=""
+        val sw=Stopwatch()
 
         val layers = game.getLayers()
         for (layer in layers) {
             layer.clear()
         }
+        sw.event("layer_clear")
+
         /* It's first loop */
         if (clock == 0L) {
             game.begin(clock)
         }
 
+        if (curClock - clock >= 2) {
+            logStr += "$curClock $clock  ${curClock-clock}"
+        }
         while (clock < curClock) {
             for (layer in layers) {
                 layer.act(clock, touchEV)
@@ -142,18 +145,32 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
 
             clock++
         }
+        sw.event("act")
+
+        gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
+        gl.glClearColor(0f, 0f, 0f, 1.0f)
+        gl.glLoadIdentity()
+        sw.event("clear")
 
         game.draw(clock)
         for (layer in layers) {
             layer.draw(clock)
         }
+        sw.event("draw")
         setBitmap(gl, layers)
+        sw.event("setBitmap")
         for (layer in layers) {
             layer.render(gl)
         }
+        sw.event("render")
         gl.glFinish()
+        sw.event("finish")
         if (null != nextGame) {
             game = nextGame
+        }
+        if (logStr != "" || sw.getTotalTime() > 2000 / fps) {
+            Log.i("Over!!!!!!!!!!!", "$logStr  +  $sw")
+
         }
     }
 }

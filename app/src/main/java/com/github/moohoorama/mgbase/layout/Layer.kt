@@ -16,7 +16,7 @@ import javax.microedition.khronos.opengles.GL10
  */
 fun makeCenterRect(x:Float,y:Float,width:Float,height:Float)= RectF(x-width/2,y-height/2,x+width/2,y+height/2)
 
-abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
+abstract class Layer(private val activity: MainActivity, private val bufferMax:Int) {
     val fullTx = RectF(0f,0f,1f,1f)
 
     private var textureID: Int = -1
@@ -31,7 +31,7 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
     abstract fun clear()
     abstract fun getWidth():Int
     abstract fun getHeight():Int
-    abstract fun drawRect(loc: RectF, tc: TColor):Boolean
+    abstract fun drawRect(left:Float, top:Float, right:Float, bottom:Float, tc: TColor):Boolean
     abstract fun getBitmap():Bitmap?
     open fun act(clock: Long, touchEV: TouchEV) {}
     open fun draw(clock: Long) {}
@@ -44,6 +44,7 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
 
     companion object {
         var depth = -0.000001f
+        val nf = shortArrayOf(0,1,2,2,1,3)
     }
 
     fun loadBitmap(gl: GL10, textureID:Int) {
@@ -67,72 +68,139 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
         setDirty()
     }
 
-    fun addRect(vertex: RectF, texture: RectF, tc: TColor, rotate:Float=0f):Boolean {
-        val vf = dot4To4Point(3, vertex, rotate)
-        val tf = dot4To4Point(2, texture)
-        val cf = rgbToPoint(tc, 4)
-        val nf = shortArrayOf(0,1,2,2,1,3)
-
-        for (i in 0 until nf.size) {
-            nf[i] = (nf[i]+(capacity*4)).toShort()
-        }
-        return addPolygon(vf, tf, cf, nf)
-    }
-
-    private fun addPolygon(vertex: FloatArray, texture: FloatArray, color: FloatArray, index:ShortArray): Boolean{
+    fun addRect(left:Float, top:Float, right:Float, bottom:Float, texture: RectF, tc: TColor, rotate:Float=0f):Boolean {
         if(capacity >= bufferMax) {
             return false
         }
-        vertexBuffer.put(vertex)
-        textureBuffer.put(texture)
-        colorBuffer.put(color)
-        indicesBuffer.put(index)
+
+        if (rotate == 0f) {
+            vertexBuffer.put(left)
+            vertexBuffer.put(bottom)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(left)
+            vertexBuffer.put(top)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(right)
+            vertexBuffer.put(bottom)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(right)
+            vertexBuffer.put(top)
+            vertexBuffer.put(depth)
+        } else {
+            val c=Math.cos(rotate.toDouble()).toFloat()
+            val s=Math.sin(rotate.toDouble()).toFloat()
+            val cx=(left+right)/2
+            val cy=(top+bottom)/2
+
+            vertexBuffer.put(cx+(left-cx)*c -(bottom-cy)*s)
+            vertexBuffer.put(cy+(left-cx)*s +(bottom-cy)*c)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(cx+(left-cx)*c -(top-cy)*s)
+            vertexBuffer.put(cy+(left-cx)*s +(top-cy)*c)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(cx+(right-cx)*c-(bottom-cy)*s)
+            vertexBuffer.put(cy+(right-cx)*s+(bottom-cy)*c)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(cx+(right-cx)*c-(top-cy)*s)
+            vertexBuffer.put(cy+(right-cx)*s+(top-cy)*c)
+            vertexBuffer.put(depth)
+        }
+
+        textureBuffer.put(texture.left)
+        textureBuffer.put(texture.bottom)
+        textureBuffer.put(texture.left)
+        textureBuffer.put(texture.top)
+        textureBuffer.put(texture.right)
+        textureBuffer.put(texture.bottom)
+        textureBuffer.put(texture.right)
+        textureBuffer.put(texture.top)
+
+        for (i in 0 until 4) {
+            colorBuffer.put(tc.r)
+            colorBuffer.put(tc.g)
+            colorBuffer.put(tc.b)
+            colorBuffer.put(tc.a)
+        }
+        for (i in 0 until 6) {
+            indicesBuffer.put((nf[i]+(capacity*4)).toShort())
+        }
+
         capacity++
         depth -= 0.000001f
 
         return true
     }
 
-    private fun rgbToPoint(tc: TColor, count: Int): FloatArray {
-        return rgbToPoint(tc.r, tc.g, tc.b, tc.a, count)
-    }
-
-    private fun rgbToPoint(r: Float, g: Float, b: Float, a: Float, count: Int): FloatArray {
-        val cf = FloatArray(count * 4)
-        for (i in 0 until count) {
-            cf[i * 4] = r
-            cf[i * 4 + 1] = g
-            cf[i * 4 + 2] = b
-            cf[i * 4 + 3] = a
+    fun addRectColors(left:Float, top:Float, right:Float, bottom:Float, texture: RectF, tc: Array<TColor>, rotate:Float=0f):Boolean {
+        if(capacity >= bufferMax && tc.size != 4) {
+            return false
         }
-        return cf
-    }
 
-    private fun dot4To4Point(p_level: Int, rect: RectF,rotate:Float=0f): FloatArray {
-        var points= if (rotate == 0f) {
-            floatArrayOf(rect.left, rect.bottom,
-                         rect.left, rect.top,
-                         rect.right, rect.bottom,
-                         rect.right, rect.top)
+        if (rotate == 0f) {
+            vertexBuffer.put(left)
+            vertexBuffer.put(bottom)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(left)
+            vertexBuffer.put(top)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(right)
+            vertexBuffer.put(bottom)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(right)
+            vertexBuffer.put(top)
+            vertexBuffer.put(depth)
         } else {
             val c=Math.cos(rotate.toDouble()).toFloat()
             val s=Math.sin(rotate.toDouble()).toFloat()
-            val cx=rect.centerX()
-            val cy=rect.centerY()
-            floatArrayOf(cx+(rect.left-cx)*c -(rect.bottom-cy)*s, cy+(rect.left-cx)*s +(rect.bottom-cy)*c,
-                         cx+(rect.left-cx)*c -(rect.top-cy)*s,     cy+(rect.left-cx)*s +(rect.top-cy)*c,
-                         cx+(rect.right-cx)*c-(rect.bottom-cy)*s, cy+(rect.right-cx)*s+(rect.bottom-cy)*c,
-                         cx+(rect.right-cx)*c-(rect.top-cy)*s,     cy+(rect.right-cx)*s+(rect.top-cy)*c)
+            val cx=(left+right)/2
+            val cy=(top+bottom)/2
+
+            vertexBuffer.put(cx+(left-cx)*c -(bottom-cy)*s)
+            vertexBuffer.put(cy+(left-cx)*s +(bottom-cy)*c)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(cx+(left-cx)*c -(top-cy)*s)
+            vertexBuffer.put(cy+(left-cx)*s +(top-cy)*c)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(cx+(right-cx)*c-(bottom-cy)*s)
+            vertexBuffer.put(cy+(right-cx)*s+(bottom-cy)*c)
+            vertexBuffer.put(depth)
+            vertexBuffer.put(cx+(right-cx)*c-(top-cy)*s)
+            vertexBuffer.put(cy+(right-cx)*s+(top-cy)*c)
+            vertexBuffer.put(depth)
         }
-        return if (p_level == 2) { /* 2d */
-            points
+
+        textureBuffer.put(texture.left)
+        textureBuffer.put(texture.bottom)
+        textureBuffer.put(texture.left)
+        textureBuffer.put(texture.top)
+        textureBuffer.put(texture.right)
+        textureBuffer.put(texture.bottom)
+        textureBuffer.put(texture.right)
+        textureBuffer.put(texture.top)
+
+        if (tc.size == 4) {
+            for (c in tc) {
+                colorBuffer.put(c.r)
+                colorBuffer.put(c.g)
+                colorBuffer.put(c.b)
+                colorBuffer.put(c.a)
+            }
         } else {
-            floatArrayOf(
-                    points[0],points[1],depth,
-                    points[2],points[3],depth,
-                    points[4],points[5],depth,
-                    points[6],points[7],depth)
+            for (i in 0 until 4) {
+                colorBuffer.put(tc[0].r)
+                colorBuffer.put(tc[0].g)
+                colorBuffer.put(tc[0].b)
+                colorBuffer.put(tc[0].a)
+            }
         }
+        for (i in 0 until 6) {
+            indicesBuffer.put((nf[i]+(capacity*4)).toShort())
+        }
+
+        capacity++
+        depth -= 0.000001f
+
+        return true
     }
 
     open fun render(gl: GL10) {
@@ -141,23 +209,13 @@ abstract class Layer(val activity: MainActivity, private val bufferMax:Int) {
         colorBuffer.position(0)
         indicesBuffer.position(0)
 
-        assert(this.textureID != -1)
-        if (this.textureID == -1) {
-            gl.glDisableClientState(GL10.GL_TEXTURE_COORD_ARRAY)
-            gl.glDisable(GL10.GL_TEXTURE_2D)
-        } else {
-            gl.glBindTexture(GL10.GL_TEXTURE_2D, this.textureID)
-            gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, textureBuffer)
-        }
+        gl.glBindTexture(GL10.GL_TEXTURE_2D, this.textureID)
+        gl.glTexCoordPointer(2, GL10.GL_FLOAT, 0, textureBuffer)
 
         gl.glVertexPointer(3, GL10.GL_FLOAT, 0, vertexBuffer)
         gl.glColorPointer(4, GL10.GL_FLOAT, 0, colorBuffer)
         gl.glDrawElements(GL10.GL_TRIANGLES, capacity*6, GL10.GL_UNSIGNED_SHORT, indicesBuffer)
 
-        if (this.textureID == -1) {
-            gl.glEnableClientState(GL10.GL_TEXTURE_COORD_ARRAY)
-            gl.glEnable(GL10.GL_TEXTURE_2D)
-        }
         capacity=0
         depth = 0.00001f
 
