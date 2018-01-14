@@ -36,6 +36,9 @@ class TColor(r:Float, g:Float, b:Float, a:Float=1.0f) {
         return TColor(r,g,b,a)
     }
 
+    fun transparent(v:Float): TColor {
+        return TColor(r,g,b,v)
+    }
     fun grayscale(): TColor {
         val avg = (this.r + this.g + this.b) / 3
         return TColor(avg, avg, avg, this.a)

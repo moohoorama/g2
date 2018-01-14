@@ -1,5 +1,6 @@
 package com.github.moohoorama.mgbase.core
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.opengl.GLSurfaceView
 import android.util.Log
@@ -21,7 +22,7 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
     private var realWidth = 1
     private var realHeight = 1
     private var clock: Long = 0
-    private val startTS = System.currentTimeMillis()
+    private var startTS = System.currentTimeMillis()
     private val baseSize = 1024
 
     private var touchEV=TouchEV()
@@ -73,6 +74,7 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
     }
 
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onTouch(view: View?, me: MotionEvent?): Boolean {
         if (me != null) {
 //            Log.i("onTouch", "$view $me  $me.x $me.y ${me.action} ${me.actionIndex} ${me.pointerCount}")
@@ -112,6 +114,10 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
     }
 
     override fun onDrawFrame(gl: GL10) {
+        val estimatedStartTS = System.currentTimeMillis() - clock*1000/fps
+        if (estimatedStartTS - startTS >= 1000*60) { /* 1분 이상 안했을경우 */
+            startTS = estimatedStartTS
+        }
         val curClock = (System.currentTimeMillis() - startTS) * fps / 1000
         var nextGame:MyGame?=null
         var logStr=""
@@ -148,7 +154,8 @@ class MyGLRenderer(private val context: Context, private var game:MyGame): GLSur
         sw.event("act")
 
         gl.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
-        gl.glClearColor(0f, 0f, 0f, 1.0f)
+//        gl.glClearColor(0f, 0f, 0f, 1.0f)
+        gl.glClearColor(1f, 1f, 0f, 1.0f)
         gl.glLoadIdentity()
         sw.event("clear")
 

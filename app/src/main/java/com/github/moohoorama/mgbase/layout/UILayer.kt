@@ -24,7 +24,7 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
     private var y=0
     private var maxHeight=0 // 현재 줄의 최대 길이. 이만큼 개행해야함
 
-    data class TextLoc(val rect: RectF, val bounds:RectF)
+    data class TextLoc(val rect: RectF, val centerPointF: PointF)
     /* 이미 할당된 공간에 대한 기록 */
     private val msgMap = HashMap<String, TextLoc>()
 
@@ -53,7 +53,7 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
     }
 
     private fun init() {
-        bitmap.eraseColor(Color.TRANSPARENT)
+        bitmap.eraseColor(TColor.WHITE.transparent(0f).int())
         msgMap.clear()
         x = 0
         y = 0
@@ -174,8 +174,10 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
     override fun act(clock: Long, touchEV: TouchEV) {
         super.act(clock, touchEV)
 
-        for (ui in uis) {
-            ui.act(clock,touchEV)
+        var removeList=ArrayList<UIObj>()
+        uis.filterNotTo(removeList) { it.act(clock, touchEV) }
+        for (r in removeList) {
+            uis.remove(r)
         }
     }
 
@@ -190,17 +192,16 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
     fun drawText(x:Float, y:Float, size:Float, align:Paint.Align, msg:String, tc: TColor) {
         val textLoc=getText(msg)
         if (textLoc != null) {
-            val tx = rectNormalize(textLoc.rect)
+            val tx = rectNormalize(textLoc.rect, 0.5f)
 
             if (tx.width() > 0 && tx.height() > 0) {
                 val width = size*tx.width()/tx.height()
                 val height = size
-                val baseTop=0;
-                //height*(textLoc.bounds.top/textLoc.rect.height())
+//                val y = y+ height*textLoc.centerPointF.y
                 when(align) {
-                    Paint.Align.LEFT -> addRect(x,y-height/2+baseTop,x+width,y+height/2+baseTop, tx, tc)
-                    Paint.Align.CENTER -> addRect(x-width/2,y-height/2+baseTop,x+width/2,y+height/2+baseTop, tx, tc)
-                    Paint.Align.RIGHT-> addRect(x-width,y-height/2+baseTop,x,y+height/2+baseTop, tx, tc)
+                    Paint.Align.LEFT -> addRect(x,y-height/2,x+width,y+height/2, tx, tc)
+                    Paint.Align.CENTER -> addRect(x-width/2,y-height/2,x+width/2,y+height/2, tx, tc)
+                    Paint.Align.RIGHT-> addRect(x-width,y-height/2,x,y+height/2, tx, tc)
                 }
             }
         }
@@ -208,7 +209,7 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
     fun drawText(loc: RectF, msg:String, tc: TColor) {
         val textLoc=getText(msg)
         if (textLoc != null) {
-            val tx = rectNormalize(textLoc.rect)
+            val tx = rectNormalize(textLoc.rect, 0.5f)
 
             if (tx.width() > 0 && tx.height() > 0) {
                 if (loc.right < 0 && loc.bottom < 0) {
@@ -220,7 +221,8 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
                 if (loc.bottom < 0) {
                     loc.bottom = loc.top + loc.width() * tx.height() / tx.width()
                 }
-                addRect(loc.left,loc.top,loc.right,loc.bottom, tx, tc)
+                val baseBot=loc.height()*textLoc.centerPointF.y
+                addRect(loc.left,loc.top+baseBot,loc.right,loc.bottom+baseBot, tx, tc)
             }
         }
     }
@@ -228,7 +230,7 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         return msgMap[msg] ?: renderText(msg)
     }
 
-    private fun getDrawableArea(width: Int, height:Int): RectF? {
+    fun getDrawableArea(width: Int, height:Int): RectF? {
         if (x > bitmapSize) {
             return null
         }
@@ -276,7 +278,12 @@ class UILayer(activity: MainActivity, private val bitmapSize:Int, private val fo
         canvas.drawText(msg, drawArea.left+Math.abs(bound.left).toFloat(), drawArea.top+Math.abs(bound.top).toFloat(), textPaint)
         setDirty()
 
-        val loc = TextLoc(drawArea, RectF(bound))
+        val cx = (bound.exactCenterX()+Math.abs(bound.left))/drawArea.width()
+        val cy = (bound.exactCenterY()+Math.abs(bound.top))/drawArea.height()
+        if (cy > 1) {
+            Log.i("drawText","Warning $cx, $cy")
+        }
+        val loc = TextLoc(drawArea, PointF(cx,cy))
         msgMap.put(msg, loc)
         return loc
     }

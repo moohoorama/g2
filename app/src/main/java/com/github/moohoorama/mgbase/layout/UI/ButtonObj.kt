@@ -1,7 +1,6 @@
 package com.github.moohoorama.mgbase.layout.UI
 
 import android.graphics.Paint
-import android.graphics.RectF
 import com.github.moohoorama.mgbase.R
 import com.github.moohoorama.mgbase.core.MainActivity
 import com.github.moohoorama.mgbase.core.TColor
@@ -27,9 +26,8 @@ class ButtonObj(private val activity: MainActivity, private val x:Float, private
         return this
     }
 
-    override fun act(clock: Long, touchEV: TouchEV) {
+    override fun act(clock: Long, touchEV: TouchEV):Boolean {
         action = -1
-        val prevPress = press
         if (touchEV.minDistance(x, y) < size/2) {
             if (pressClock > 0) {
                 pressClock--
@@ -44,6 +42,7 @@ class ButtonObj(private val activity: MainActivity, private val x:Float, private
             press = (press*7)/8
             pressClock = 0
         }
+        return true
 //        Log.d("button", "button $press")
     }
 
@@ -59,7 +58,7 @@ class ButtonObj(private val activity: MainActivity, private val x:Float, private
         if (color.a > 0) {
 //            layer.drawRoundRect(makeCenterRect(x,y,width+press-pressMax,height+press-pressMax),round,color)
             val loc=makeCenterRect(x,y,width+press-pressMax,height+press-pressMax)
-            layer.drawBlock(loc.left,loc.top,loc.right,loc.bottom,round,color)
+            layer.drawRoundBlock(loc.left,loc.top,loc.right,loc.bottom,round,color)
             layer.drawText(x,y,(width+press-pressMax)/4, Paint.Align.CENTER, msg, TColor.WHITE)
         }
     }

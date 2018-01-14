@@ -1,28 +1,36 @@
 package com.github.moohoorama.mgbase.game
 
 import android.graphics.*
-import android.util.Log
 import com.github.moohoorama.mgbase.R
 import com.github.moohoorama.mgbase.core.*
 import com.github.moohoorama.mgbase.layout.Layer
+import com.github.moohoorama.mgbase.layout.UI.ButtonObj
 import com.github.moohoorama.mgbase.layout.UI.CustomTexture
+import com.github.moohoorama.mgbase.layout.UI.UIObj
 import com.github.moohoorama.mgbase.layout.UILayer
 import java.util.*
-import android.graphics.Shader.TileMode
-import android.opengl.ETC1.getHeight
-import android.R.attr.y
-import android.R.attr.x
-
-
-
-
 
 /**
  * Created by kyw on 2017-12-31
  */
 
+class ScoreUIObj(private val beginClock:Long,private val score:Int,private val x:Float,private val y:Float) : UIObj() {
+    private val life = 60L
+    private val size = 120
+    override fun act(clock: Long, touchEV: TouchEV):Boolean {
+        return (clock - beginClock < life)
+    }
+
+    override fun draw(layer: UILayer, clock: Long) {
+        val progress = (clock-beginClock).toFloat()/life
+        layer.drawText(x,y,size*Math.pow(progress.toDouble(),0.2).toFloat(),Paint.Align.CENTER,"$score",TColor.WHITE.transparent(1-progress))
+    }
+}
+
 class Shariki(private val activity: MainActivity) : MyGame {
-    private var uiLayer= UILayer(activity,1024,48,64,1024)
+    private var uiLayer= UILayer(activity = activity, bitmapSize = 1024, fontSize = 48, shapeSize = 64, bufferMax = 1024)
+
+    private val resetButton = ButtonObj(activity,100f,50f,"Reset",TColor.RED,200f,160f).attach(uiLayer)
 
     private val width=8
     private val height=8
@@ -65,43 +73,43 @@ class Shariki(private val activity: MainActivity) : MyGame {
         paint.color = mid.int()
         canvas.drawRect(inArea, paint)
 
-        val wallpath = Path()
+        val path = Path()
         paint.shader = LinearGradient(inArea.left,area.top,inArea.left,inArea.top, high.int(), mid.int(), Shader.TileMode.MIRROR)
-        wallpath.reset() // only needed when reusing this path for a new build
-        wallpath.moveTo(area.left, area.top) // used for first point
-        wallpath.lineTo(area.right,area.top)
-        wallpath.lineTo(inArea.right,inArea.top)
-        wallpath.lineTo(inArea.left,inArea.top)
-        wallpath.lineTo(area.left, area.top)
-        canvas.drawPath(wallpath, paint)
+        path.reset() // only needed when reusing this path for a new build
+        path.moveTo(area.left, area.top) // used for first point
+        path.lineTo(area.right,area.top)
+        path.lineTo(inArea.right,inArea.top)
+        path.lineTo(inArea.left,inArea.top)
+        path.lineTo(area.left, area.top)
+        canvas.drawPath(path, paint)
 
         paint.shader = LinearGradient(inArea.left,inArea.bottom,inArea.left,area.bottom, mid.int(), low.int(), Shader.TileMode.MIRROR)
-        wallpath.reset() // only needed when reusing this path for a new build
-        wallpath.moveTo(area.left, area.bottom) // used for first point
-        wallpath.lineTo(area.right,area.bottom)
-        wallpath.lineTo(inArea.right,inArea.bottom)
-        wallpath.lineTo(inArea.left,inArea.bottom)
-        wallpath.lineTo(area.left, area.bottom)
-        canvas.drawPath(wallpath, paint)
+        path.reset() // only needed when reusing this path for a new build
+        path.moveTo(area.left, area.bottom) // used for first point
+        path.lineTo(area.right,area.bottom)
+        path.lineTo(inArea.right,inArea.bottom)
+        path.lineTo(inArea.left,inArea.bottom)
+        path.lineTo(area.left, area.bottom)
+        canvas.drawPath(path, paint)
 
 
         paint.shader = LinearGradient(area.left,inArea.top,inArea.left,inArea.top, high.int(), mid.int(), Shader.TileMode.MIRROR)
-        wallpath.reset() // only needed when reusing this path for a new build
-        wallpath.moveTo(area.left, area.top) // used for first point
-        wallpath.lineTo(area.left,area.bottom)
-        wallpath.lineTo(inArea.left,inArea.bottom)
-        wallpath.lineTo(inArea.left,inArea.top)
-        wallpath.lineTo(area.left, area.top)
-        canvas.drawPath(wallpath, paint)
+        path.reset() // only needed when reusing this path for a new build
+        path.moveTo(area.left, area.top) // used for first point
+        path.lineTo(area.left,area.bottom)
+        path.lineTo(inArea.left,inArea.bottom)
+        path.lineTo(inArea.left,inArea.top)
+        path.lineTo(area.left, area.top)
+        canvas.drawPath(path, paint)
 
         paint.shader = LinearGradient(inArea.right,inArea.top,area.right,inArea.top, mid.int(), low.int(), Shader.TileMode.MIRROR)
-        wallpath.reset() // only needed when reusing this path for a new build
-        wallpath.moveTo(area.right, area.top) // used for first point
-        wallpath.lineTo(area.right,area.bottom)
-        wallpath.lineTo(inArea.right,inArea.bottom)
-        wallpath.lineTo(inArea.right,inArea.top)
-        wallpath.lineTo(area.right, area.top)
-        canvas.drawPath(wallpath, paint)
+        path.reset() // only needed when reusing this path for a new build
+        path.moveTo(area.right, area.top) // used for first point
+        path.lineTo(area.right,area.bottom)
+        path.lineTo(inArea.right,inArea.bottom)
+        path.lineTo(inArea.right,inArea.top)
+        path.lineTo(area.right, area.top)
+        canvas.drawPath(path, paint)
     }).attach(uiLayer)
 
 
@@ -112,9 +120,11 @@ class Shariki(private val activity: MainActivity) : MyGame {
         return arrayOf(uiLayer)
     }
 
+    private fun topPad() = activity.glView.renderer.getHeight()-1024f
+
     private fun getX(x:Int) = (pad+x)*size.toFloat()
-    private fun getY(y:Int) = (pad+y)*size.toFloat()
-    private fun getLoc(x:Int, y:Int) = TPoint((pad+x)*size.toFloat(), (pad+y)*size.toFloat())
+    private fun getY(y:Int) = ((pad+y)*size+topPad()).toFloat()
+    private fun getLoc(x:Int, y:Int) = TPoint(getX(x), getY(y))
     private fun getRectF(x:Int, y:Int,xx:Int=x+1,yy:Int=y+1):RectF {
         val leftTop=getLoc(x,y)
         val rightBot=getLoc(xx,yy)
@@ -162,13 +172,9 @@ class Shariki(private val activity: MainActivity) : MyGame {
         }
     }
 
-    fun findBrokenBotom(i:Int, j:Int):Int {
-        for (y in j until height) {
-            if (blocks[getAdrXY(i, y)] == 0) {
-                return y
-            }
-        }
-        return -1
+    private fun findBrokenBotom(i:Int, j:Int):Int {
+        return (j until height).firstOrNull { blocks[getAdrXY(i, it)] == 0 }
+                ?: -1
     }
 
     override fun draw(clock: Long) {
@@ -188,7 +194,7 @@ class Shariki(private val activity: MainActivity) : MyGame {
             for (i in 1 until width-1) {
                 val bot = findBrokenBotom(i,j)
                 if (bot != -1) {
-                    var upIdx = blocks[getAdrXY(i,j-1)]
+                    val upIdx = blocks[getAdrXY(i, j-1)]
                     if (upIdx > 0) {
                         drawMoveSlot(i, j - 1,
                                 i, j,
@@ -234,7 +240,7 @@ class Shariki(private val activity: MainActivity) : MyGame {
                 }
             }
         }
-        uiLayer.drawText(50f,50f,50f, Paint.Align.LEFT, "점수 $score",TColor.WHITE)
+        uiLayer.drawText(50f,150f,50f, Paint.Align.LEFT, "점수 $score",TColor.WHITE)
     }
 
     private fun checkMatch():Boolean {
@@ -242,39 +248,30 @@ class Shariki(private val activity: MainActivity) : MyGame {
             for (i in 1 until width-1) {
                 val src = blocks[getAdrXY(i, j)]
 
-                var count = 1
-                for (k in 1 until 5) {
-                    if (i+k < width-1 && src == blocks[getAdrXY(i+k, j)]) {
-                        count ++
-                    } else {
-                        break
-                    }
-                }
+                var count = 1 + (1 until 5)
+                        .takeWhile { i+ it < width-1 && src == blocks[getAdrXY(i+ it, j)] }
+                        .count()
                 if (count >= 3) {
                     //score += count*combo
-                    for (k in 0 until count) {
-                        val pos = Point(i+k,j)
-                        //blocks[getAdr(pos)] = 0
-                        selectedPos.add(pos)
-                    }
+                    (0 until count)
+                            .map {
+                                Point(i+ it, j)
+                            }
+                            .forEach { selectedPos.add(it) }
                     return true
                 }
 
-                count = 1
-                for (k in 1 until 5) {
-                    if (j+k < height-1 &&src == blocks[getAdrXY(i, j+k)]) {
-                        count ++
-                    } else {
-                        break
-                    }
-                }
+                count = 1 + (1 until 5)
+                        .takeWhile { j+ it < height-1 &&src == blocks[getAdrXY(i, j+ it)] }
+                        .count()
                 if (count >= 3) {
                     //score += count*combo
-                    for (k in 0 until count) {
-                        val pos = Point(i,j+k)
-                        //blocks[getAdr(pos)] = 0
-                        selectedPos.add(pos)
-                    }
+                    (0 until count)
+                            .map {
+                                Point(i, j+ it)
+                                //blocks[getAdr(pos)] = 0
+                            }
+                            .forEach { selectedPos.add(it) }
                     return true
                 }
             }
@@ -287,10 +284,17 @@ class Shariki(private val activity: MainActivity) : MyGame {
         val point = touchEV.getPress()
         val choice =
         if (point != null && getRectF(1,1,width-1,height-1).contains(point.x,point.y)) {
-            Point((point.x/size-pad).toInt(),(point.y/size-pad).toInt())
+            Point((point.x/size-pad).toInt(),((point.y-topPad())/size-pad).toInt())
         } else {
             null
         }
+
+        if (resetButton is ButtonObj) {
+            if (resetButton.press()) {
+                makeRandomStage()
+            }
+        }
+
         when(status) {
             Status.WAIT -> if (choice != null) {
                 selectedPos.add(choice)
@@ -332,7 +336,11 @@ class Shariki(private val activity: MainActivity) : MyGame {
                     for (s in selectedPos) {
                         blocks[getAdr(s)] = 0
                     }
-                    score += selectedPos.size*combo
+                    val cx = selectedPos.sumBy { it.x } / selectedPos.size
+                    val cy = selectedPos.sumBy { it.y } / selectedPos.size
+                    val addScore = selectedPos.size*(combo*combo)
+                    uiLayer.addUI(ScoreUIObj(clock,addScore,getX(cx),getY(cy)))
+                    score += addScore
                     selectedPos.clear()
                     status = Status.BREAKDOWN
                     speed = 2

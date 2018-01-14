@@ -56,7 +56,9 @@ abstract class Layer(private val activity: MainActivity, private val bufferMax:I
                 gl.glBindTexture(GL10.GL_TEXTURE_2D, textureID)
                 //GL_NEAREST >>> GL_LINEAR
                 gl.glTexParameterx(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_NEAREST)
-                gl.glTexParameterx(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR)
+//                gl.glTexParameterx(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_LINEAR)
+ //               gl.glTexParameterx(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_NEAREST)
+                gl.glTexParameterx(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_NEAREST)
                 GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, bitmap, 0)
             } else {
                 Log.i("LoadBitmap", "$textureID, NoBitmap")

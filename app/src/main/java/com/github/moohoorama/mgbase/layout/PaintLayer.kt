@@ -3,7 +3,6 @@ package com.github.moohoorama.mgbase.layout
 import android.graphics.*
 import com.github.moohoorama.mgbase.core.MainActivity
 import com.github.moohoorama.mgbase.core.TColor
-import com.github.moohoorama.mgbase.layout.Layer
 
 /**
  * Created by Yanoo on 2017. 12. 28
